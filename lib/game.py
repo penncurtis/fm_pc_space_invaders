@@ -1,117 +1,127 @@
-import pygame
-import random
-import math
+import pygame, sys
+from random import choice
+from player import Player
+from alien import Alien
+from bullet import Bullet
 
-pygame.init()
+class Game:
 
-screen = pygame.display.set_mode((800, 600))
+    def __init__(self):
+        player_sprite = Player((screen_width / 2, screen_height), screen_width, 5 )
+        self.player = pygame.sprite.GroupSingle(player_sprite)
 
-pygame.display.set_caption("Space Invaders")
-icon = pygame.image.load("./lib/assets/icon_1.png")
-pygame.display.set_icon(icon)
+        self.lives = 3
+        self.live_surf = pygame.image.load("./lib/assets/icon_1.png").convert_alpha()
+        self.live_x_start_pos = screen_width - (self.live_surf.get_size()[0] * 2 + 20)
+        self.score = 0
+        self.font = pygame.font.Font("./lib/assets/space_invaders.ttf", 20)
 
-# Player things and what not
+        self.aliens = pygame.sprite.Group()
+        self.alien_bullets = pygame.sprite.Group()
+        self.alien_setup(rows = 6, cols = 8)
+        self.alien_direction = 1
 
-player_img = pygame.image.load("./lib/assets/icon_4.png")
-player_x = 370
-player_y = 480
-player_x_change = 0
+    def alien_setup(self, rows, cols, x_distance = 60, y_distance = 48, x_offset = 70, y_offset = 100):
+        for row_index, row in enumerate(range(rows)):
+            for col_index, col in enumerate(range(cols)):
+                x = col_index * x_distance + x_offset
+                y = row_index * y_distance + y_offset
+                alien_sprite = Alien(x, y)
+                self.aliens.add(alien_sprite)
 
-def player(x, y):
-    screen.blit(player_img, (x, y))
+    def alien_position_checker(self):
+        all_aliens = self.aliens.sprites()
+        for alien in all_aliens:
+            if alien.rect.right >= screen_width:
+                self.alien_direction = -1
+                self.alien_move_down(2)
+            elif alien.rect.left <= 0:
+                self.alien_direction = 1
+                self.alien_move_down(2)
 
-#  Enemy things and what not
+    def alien_move_down(self, distance):
+        if self.aliens:
+            for alien in self.aliens.sprites():
+                alien.rect.y += distance
 
-enemy_img = pygame.image.load("./lib/assets/icon_3.png")
-enemy_x = random.randint(0, 736)
-enemy_y = random.randint(50, 150)
-enemy_x_change = 4
-enemy_y_change = 40
+    def alien_shoot(self):
+        if self.aliens.sprites():
+            random_alien = choice(self.aliens.sprites())
+            bullet_sprite = Bullet(random_alien.rect.center, 6, screen_height)
+            self.alien_bullets.add(bullet_sprite)
 
-def enemy(x, y):
-    screen.blit(enemy_img, (x, y))
+    def collision_checks(self):
 
-#   Bullet things and what not
-
-bullet_img = pygame.image.load("./lib/assets/icon_2.png")
-bullet_x = 0
-bullet_y = 480
-bullet_y_change = 10
-bullet_state = "ready"
-
-def fire_bullet(x, y):
-    global bullet_state
-    bullet_state = "fire"
-    screen.blit(bullet_img, (x + 16, y + 10))
-
-#  score things and what not
-
-score_value = 0
-font = pygame.font.Font("freesansbold.ttf", 32)
-text_x = 10
-text_y = 10
-
-def show_score(x, y):
-    score = font.render("Score: " + str(score_value), True, (255, 255, 255))
-    screen.blit(score, (x, y))
-
-#  blowing up enemies and what not
-
-def enemy_collide(enemy_x, enemy_y, bullet_x, bullet_y):
-    distance = math.sqrt((math.pow(enemy_x - bullet_x, 2)) + (math.pow(enemy_y - bullet_y, 2)))
-    if distance < 27:
-        return True
-    else:
-        return False
-    
-#  starting the game and what not
-
-running = True
-
-while running:
-    screen.fill((0, 0, 0))
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                player_x_change = -5
-            if event.key == pygame.K_RIGHT:
-                player_x_change = 5
-            if event.key == pygame.K_SPACE:
-                if bullet_state == "ready":
-                    bullet_x = player_x
-                    fire_bullet(bullet_x, bullet_y)
+        if self.player.sprite.bullets:
+            for bullet in self.player.sprite.bullets:
+                aliens_hit = pygame.sprite.spritecollide(bullet, self.aliens, True)
+                if aliens_hit:
+                    for alien in aliens_hit:
+                        self.score += alien.value
+                    bullet.kill()
         
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                player_x_change = 0
+        if self.alien_bullets:
+            for bullet in self.alien_bullets:
+                if pygame.sprite.spritecollide(bullet, self.player, False):
+                    bullet.kill()
+                    self.lives -= 1
+                    if self.lives <= 0:
+                        pygame.quit()
+                        sys.exit()
 
-    # player movement and what not
+        if self.aliens:
+            for alien in self.aliens:
+                if pygame.sprite.spritecollide(alien, self.player, False):
+                    pygame.quit()
+                    sys.exit() 
 
-    player_x += player_x_change
+    def display_lives(self):
+        for live in range(self.lives - 1):
+            x = self.live_x_start_pos + (live * (self.live_surf.get_size()[0] + 10))
+            screen.blit(self.live_surf, (x, 8))
 
-    if player_x <= 0:
-        player_x = 0
-    elif player_x >= 736:
-        player_x = 736
+    def display_score(self):
+        score_surf = self.font.render(f'score: {self.score}', False, 'white')
+        score_rect = score_surf.get_rect(topleft = (0, 0))
+        screen.blit(score_surf, score_rect)
 
-    # enemy movement and what not
+    def run(self):
+        self.player.update()
+        self.aliens.update(self.alien_direction)
+        self.alien_bullets.update()
 
-    enemy_x += enemy_x_change
+        self.alien_position_checker()
+        self.collision_checks()
 
-    if enemy_x <= 0:
-        enemy_x_change = 4
-        enemy_y += enemy_y_change
-    elif enemy_x >= 736:
-        enemy_x_change = -4
-        enemy_y += enemy_y_change
+        self.player.sprite.bullets.draw(screen)
+        self.player.draw(screen)
+        self.aliens.draw(screen)
+        self.alien_bullets.draw(screen)
+        self.display_lives()
+        self.display_score()
 
-    #  bullet movement and what not
+if __name__ == '__main__':
+    pygame.init()
+    screen_width = 600
+    screen_height = 600
+    screen = pygame.display.set_mode((screen_width, screen_height))
+    clock = pygame.time.Clock()
+    game = Game()
 
-    if bullet_y <= 0:
-        bullet_y = 480
-        bullet_state = "ready"
-    
+    ALIENBULLET = pygame.USEREVENT + 1
+    pygame.time.set_timer(ALIENBULLET, 800)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == ALIENBULLET:
+                game.alien_shoot()
+        
+        screen.fill((30,30,30))
+
+        game.run()
+
+        pygame.display.flip()
+        clock.tick(60)
