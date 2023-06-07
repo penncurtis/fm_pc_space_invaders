@@ -4,11 +4,16 @@ from player import Player
 from alien import Alien
 from bullet import Bullet
 
+
 class Game:
+
+
 
     def __init__(self):
         player_sprite = Player((screen_width / 2, screen_height), screen_width, 5 )
         self.player = pygame.sprite.GroupSingle(player_sprite)
+
+        self.game_over = False
 
         self.lives = 3
         self.live_surf = pygame.image.load("./lib/assets/icon_1.png").convert_alpha()
@@ -30,6 +35,8 @@ class Game:
                 self.aliens.add(alien_sprite)
 
     def alien_position_checker(self):
+        if not self.aliens:
+            self.alien_setup(rows=6, cols=8)
         all_aliens = self.aliens.sprites()
         for alien in all_aliens:
             if alien.rect.right >= screen_width:
@@ -66,14 +73,12 @@ class Game:
                     bullet.kill()
                     self.lives -= 1
                     if self.lives <= 0:
-                        pygame.quit()
-                        sys.exit()
+                        self.game_over = True
 
         if self.aliens:
             for alien in self.aliens:
                 if pygame.sprite.spritecollide(alien, self.player, False):
-                    pygame.quit()
-                    sys.exit() 
+                    self.game_over = True
 
     def display_lives(self):
         for live in range(self.lives - 1):
@@ -85,20 +90,29 @@ class Game:
         score_rect = score_surf.get_rect(topleft = (0, 0))
         screen.blit(score_surf, score_rect)
 
+    def end_message(self):
+        loss_surf = self.font.render("GAME OVER", False, "white")
+        loss_rect = loss_surf.get_rect(center = (screen_width / 2, screen_height / 2))
+        screen.blit(loss_surf, loss_rect)
+
     def run(self):
-        self.player.update()
-        self.aliens.update(self.alien_direction)
-        self.alien_bullets.update()
+        if not self.game_over:
+            self.player.update()
+            self.aliens.update(self.alien_direction)
+            self.alien_bullets.update()
 
-        self.alien_position_checker()
-        self.collision_checks()
+            self.alien_position_checker()
+            self.collision_checks()
 
-        self.player.sprite.bullets.draw(screen)
-        self.player.draw(screen)
-        self.aliens.draw(screen)
-        self.alien_bullets.draw(screen)
-        self.display_lives()
-        self.display_score()
+            self.player.sprite.bullets.draw(screen)
+            self.player.draw(screen)
+            self.aliens.draw(screen)
+            self.alien_bullets.draw(screen)
+            self.display_lives()
+            self.display_score()
+
+        else:
+            self.end_message()
 
 if __name__ == '__main__':
     pygame.init()
