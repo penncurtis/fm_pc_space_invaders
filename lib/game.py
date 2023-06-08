@@ -108,7 +108,7 @@ class Game:
         score_text = "TOP SCORES - "
         for i, score in enumerate(top_scores):
             name, value = score
-            score_text += f"{i+1}. {name}: {value}"
+            score_text += f"{i+1}. {name}: {value} "
 
         score_surf = self.font.render(score_text, False, "white")
         score_rect = score_surf.get_rect(center=(screen_width / 2, screen_height / 2 + 50))
