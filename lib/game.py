@@ -95,6 +95,26 @@ class Game:
         loss_surf = self.font.render("GAME OVER", False, "white")
         loss_rect = loss_surf.get_rect(center = (screen_width / 2, screen_height / 2))
         screen.blit(loss_surf, loss_rect)
+
+        self.display_scores()
+
+    def display_scores(self):
+        conn = sqlite3.connect("game_scores.db")
+        c = conn.cursor()
+
+        c.execute("SELECT player_name, score FROM scores ORDER BY score DESC LIMIT 5")
+        top_scores = c.fetchall()
+
+        score_text = "TOP SCORES - "
+        for i, score in enumerate(top_scores):
+            name, value = score
+            score_text += f"{i+1}. {name}: {value}"
+
+        score_surf = self.font.render(score_text, False, "white")
+        score_rect = score_surf.get_rect(center=(screen_width / 2, screen_height / 2 + 50))
+        screen.blit(score_surf, score_rect)
+
+        conn.close()
     
     def start_menu(self):
         start_surf = self.font.render("START GAME? (press space)", False, "white")
