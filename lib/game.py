@@ -1,4 +1,5 @@
 import pygame, sys
+import sqlite3
 from random import choice
 from player import Player
 from alien import Alien
@@ -7,12 +8,12 @@ from bullet import Bullet
 
 class Game:
 
-
-
     def __init__(self):
+        self.player_name = " "
         player_sprite = Player((screen_width / 2, screen_height), screen_width, 5 )
         self.player = pygame.sprite.GroupSingle(player_sprite)
 
+        self.start_game = False
         self.game_over = False
 
         self.lives = 3
@@ -94,9 +95,35 @@ class Game:
         loss_surf = self.font.render("GAME OVER", False, "white")
         loss_rect = loss_surf.get_rect(center = (screen_width / 2, screen_height / 2))
         screen.blit(loss_surf, loss_rect)
+    
+    def start_menu(self):
+        start_surf = self.font.render("START GAME? (press space)", False, "white")
+        start_rect = start_surf.get_rect(center = (screen_width / 2, screen_height / 2))
+        screen.blit(start_surf, start_rect)
+        
+    def get_input(self):
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_SPACE]:
+            self.start_game = True
+            self.player_name = input("Enter Name:")
+
+    def save_score_to_database(self):
+        conn = sqlite3.connect("game_scores.db")
+        c = conn.cursor()
+
+        c.execute("CREATE TABLE IF NOT EXISTS scores (player_name text, score integer)")
+        c.execute("INSERT INTO scores (player_name, score) VALUES (?, ?)", (self.player_name, self.score))
+
+        conn.commit()
+        conn.close()
 
     def run(self):
-        if not self.game_over:
+        if not self.start_game:
+            self.start_menu()
+            self.get_input()
+
+        if self.start_game and not self.game_over:
             self.player.update()
             self.aliens.update(self.alien_direction)
             self.alien_bullets.update()
@@ -111,8 +138,9 @@ class Game:
             self.display_lives()
             self.display_score()
 
-        else:
+        if self.game_over:
             self.end_message()
+            self.save_score_to_database()
 
 if __name__ == '__main__':
     pygame.init()
