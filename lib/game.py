@@ -113,7 +113,14 @@ class Game:
         c = conn.cursor()
 
         c.execute("CREATE TABLE IF NOT EXISTS scores (player_name text, score integer)")
-        c.execute("INSERT INTO scores (player_name, score) VALUES (?, ?)", (self.player_name, self.score))
+        c.execute("SELECT * FROM scores WHERE player_name = ?", (self.player_name,))
+        existing_entry = c.fetchone()
+
+        if existing_entry:
+            if self.score > existing_entry[1]:
+                c.execute("UPDATE scores SET score = ? WHERE player_name = ?", (self.score, self.player_name))
+        else:
+            c.execute("INSERT INTO scores (player_name, score) VALUES (?, ?)", (self.player_name, self.score))
 
         conn.commit()
         conn.close()
